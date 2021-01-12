@@ -5,19 +5,20 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 )
 
 type Details struct {
 	Name        string
 	Id          int
 	Designation string
-	email       string
-	phone       string
+	Email       string
+	Phone       string
 }
 
 var Database = map[int]Details{
 
-	1001: {"Ramesh", 1001, "Software Developer", "samesh@gmail.com", "+91-9865321475"},
+	1001: {"Ramesh", 1001, "Software Developer", "ramesh@gmail.com", "+91-9865321475"},
 	1002: {"Suresh", 1002, "Lead Engineer", "suresh@gmail.com", "+91-9994465232"},
 }
 
@@ -27,7 +28,7 @@ var EmployeeId = []int{1001, 1002}
 var RequiredInput int
 var RequiredId int
 var RequiredEmail string
-var RequiredPhone string
+var RequiredPhone, RequiredPhone1 string
 var RequiredName string
 var RequiredDesignation string
 var RequiredDesignation1 string
@@ -118,8 +119,8 @@ func search() {
 		fmt.Println("Name : ", Database[RequiredId].Name)
 		fmt.Println("Employee ID : ", Database[RequiredId].Id)
 		fmt.Println("Role : ", Database[RequiredId].Designation)
-		fmt.Println("Email : ", Database[RequiredId].email)
-		fmt.Println("Phone : ", Database[RequiredId].phone)
+		fmt.Println("Email : ", Database[RequiredId].Email)
+		fmt.Println("Phone : ", Database[RequiredId].Phone)
 	}
 }
 
@@ -137,16 +138,24 @@ func add() {
 		fmt.Println("Enter the Employee Email :")
 		fmt.Scanln(&RequiredEmail)
 		fmt.Println("Enter the Employee Phone :")
-		fmt.Scanln(&RequiredPhone)
-		Database[RequiredId] = Details{RequiredName, RequiredId, RequiredDesignation + " " + RequiredDesignation1, RequiredEmail, RequiredPhone}
-		EmployeeId = append(EmployeeId, RequiredId)
-		temp, ok := Database[RequiredId]
-		if ok == true {
-			fmt.Printf("Details of %v Id has been added succesfully\n", RequiredId)
+		fmt.Scanln(&RequiredPhone, &RequiredPhone1)
+		RequiredPhone = RequiredPhone + " " + RequiredPhone1
+		b := PhoneValidater(RequiredPhone)
+		if b == false {
+			fmt.Println("you have entered Invalid number")
 		} else {
-			fmt.Printf("Unabele to add %v Id's details\n", temp)
+			Database[RequiredId] = Details{RequiredName, RequiredId, RequiredDesignation + " " + RequiredDesignation1, RequiredEmail, RequiredPhone}
+			EmployeeId = append(EmployeeId, RequiredId)
+			temp, ok := Database[RequiredId]
+			RequiredPhone1 = ""
+			if ok == true {
+				fmt.Printf("Details of %v Id has been added succesfully\n", RequiredId)
+			} else {
+				fmt.Printf("Unabele to add %v Id's details\n", temp)
+			}
 		}
 	}
+
 }
 
 func flush() {
@@ -194,12 +203,13 @@ func loadDataDecoder() {
 			fmt.Println("Reached the End!!!")
 			break
 		}
-		if err != nil {
+		/*if err != nil {
 			fmt.Println("Error in Decoding the file")
 			break
-		}
+		}*/
 
 		Data = append(Data, buff)
+		fmt.Println(Data)
 	}
 
 	for i, _ := range Data {
@@ -207,8 +217,21 @@ func loadDataDecoder() {
 		fmt.Println("Name : ", Data[i].Name)
 		fmt.Println("Employee ID : ", Data[i].Id)
 		fmt.Println("Role : ", Data[i].Designation)
-		fmt.Println("Email : ", Data[i].email)
-		fmt.Println("Phone : ", Data[i].phone)
+		fmt.Println("Email : ", Data[i].Email)
+		fmt.Println("Phone : ", Data[i].Phone)
 	}
 
+}
+
+func PhoneValidater(s string) bool {
+	if len(s) >= 10 {
+		r := regexp.MustCompile(`\d{10}`)
+		t := regexp.MustCompile(`\d{5} \d{5}`)
+		if r.MatchString(s) == true || t.MatchString(s) == true {
+			return true
+		} else {
+			return false
+		}
+	}
+	return false
 }
