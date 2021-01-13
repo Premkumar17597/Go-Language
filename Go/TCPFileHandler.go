@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"strings"
 )
@@ -28,17 +29,19 @@ func main() {
 			uploadData()
 
 		case 2:
-			editData()
+			c := decodeData()
+			editData(c)
 
 		case 3:
-			decodeData()
-			defer file.Close()
+			b := decodeData()
+			DisplayData(b)
 
 		case 4:
 			return
 		}
 
 	}
+	defer file.Close()
 }
 
 func uploadData() {
@@ -47,45 +50,45 @@ func uploadData() {
 	scanner.Scan()
 	line := scanner.Text()
 	fmt.Println("Captured : ", line)
-	file, err = os.OpenFile("Note.db", os.O_RDWR|os.O_CREATE, 0755)
-	if err != nil {
-		fmt.Println("File is failed to open")
-		return
-	}
-	encoder := gob.NewEncoder(file)
-	err = encoder.Encode(line)
-	if err != nil {
-		fmt.Println("Encoding failed")
-		return
-	}
+	flush(line)
+}
 
-	fmt.Println("Encoding completed!!!!!")
-	file.Close()
+func editData(str []string) {
+	var ReWord, ReWord2, Result string
+	fmt.Println("Enter a word to replace")
+	fmt.Scanln(&ReWord)
+	fmt.Println("Enter a word to replace : ", ReWord)
+	fmt.Scanln(&ReWord2)
+	//fmt.Println(str)
+	for i, _ := range str {
+		n := strings.Count(str[i], ReWord)
+		fmt.Println("Number of strings matched : ", n)
+		str[i] = strings.Replace(str[i], ReWord, ReWord2, -1)
+		Result = str[i]
+		fmt.Println("Modified Data : ", str[i])
+	}
+	flush(Result)
+	Data = nil
 
 }
 
-func editData() {
-	fmt.Println("Edit Data fun called")
-
-}
-
-func decodeData() {
+func decodeData() []string {
 	file, err = os.OpenFile("Note.db", os.O_RDONLY, 0755)
+	var a []string = nil
 	if err != nil {
 		fmt.Println("Failed to open the file")
-		return
+		return a
 	} else {
-		loadDataDecoder()
+		a = loadDataDecoder()
+		return a
 	}
 
 }
 
-func loadDataDecoder() {
+func loadDataDecoder() []string {
 	decoder := gob.NewDecoder(file)
 	var buff string
-	count := 0
 	for {
-		count++
 		err := decoder.Decode(&buff)
 		if err == io.EOF {
 			//fmt.Println("Reached the End!!!")
@@ -93,30 +96,34 @@ func loadDataDecoder() {
 		}
 
 		Data = append(Data, buff)
-		//fmt.Println(Data)
 	}
-	/*err := decoder.Decode(&buff)
-	if err == io.EOF {
-		fmt.Println("Reached the End!!!")
-	}*/
-	/*fmt.Println("Captured : ")
-	fmt.Println("                ", buff)
-	buff = "" */
+	return Data
 
-	fmt.Println("Loader count : ", count)
-	fmt.Printf("length of Data %v and capacity of Data %v\n", len(Data), cap(Data))
-	DisplayCount := 0
-	for i, _ := range Data {
-		DisplayCount++
+}
+
+func DisplayData(str []string) {
+	fmt.Printf("length of Data %v and capacity of Data %v\n", len(str), cap(str))
+	for i, _ := range str {
 		fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-		fmt.Println(Data[i])
-		n := strings.Count(Data[i], "prem")
-		fmt.Println("Number of strings matched : ", n)
-		Data[i] = strings.Replace(Data[i], "prem", "arun", -1)
-		fmt.Println("Modified Data : ", Data[i])
-
+		fmt.Println(str[i])
 	}
 	Data = nil
-	fmt.Println("Data Display count : ", DisplayCount)
 
+}
+
+func flush(s string) {
+
+	Conn, err := net.Dial("tcp", "localhost:7200")
+	if err != nil {
+		fmt.Println("Error in net Dial", err)
+		return
+	}
+	ServEncoder := gob.NewEncoder(Conn)
+	err = ServEncoder.Encode(s)
+	if err != nil {
+		fmt.Println("Server Encoding failed")
+		return
+	}
+	fmt.Println("Server Encoding completed!!!!!")
+	Conn.Close()
 }
