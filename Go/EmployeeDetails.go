@@ -4,6 +4,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"regexp"
 )
@@ -16,15 +17,11 @@ type Details struct {
 	Phone       string
 }
 
-var Database = map[int]Details{
-
-	1001: {"Ramesh", 1001, "Software Developer", "ramesh@gmail.com", "+91-9865321475"},
-	1002: {"Suresh", 1002, "Lead Engineer", "suresh@gmail.com", "+91-9994465232"},
-}
+var Database = map[int]Details{}
 
 var err error
 var file *os.File
-var EmployeeId = []int{1001, 1002}
+var EmployeeId []int
 var RequiredInput int
 var RequiredId int
 var RequiredEmail string
@@ -164,24 +161,29 @@ func flush() {
 		fmt.Println("File is failed to open")
 		return
 	} else {
-		loadDataEncoder()
-	}
-}
-
-func loadDataEncoder() {
-	encoder := gob.NewEncoder(file)
-	for i, _ := range EmployeeId {
-		temp := EmployeeId[i]
-		err = encoder.Encode(Database[temp])
-		fmt.Println(temp)
-		fmt.Println(Database[temp])
+		Conn, err := net.Dial("tcp", "localhost:7200")
 		if err != nil {
-			fmt.Println("Encoding failed")
+			fmt.Println("Error in net Dial", err)
 			return
 		}
+		ServEncoder := gob.NewEncoder(Conn)
+		serverEnCount := 0
+		for i, _ := range EmployeeId {
+			serverEnCount++
+			temp := EmployeeId[i]
+			err = ServEncoder.Encode(Database[temp])
+			fmt.Println(temp)
+			fmt.Println(Database[temp])
+			if err != nil {
+				fmt.Println("Server Encoding failed")
+				return
+			}
+		}
+		fmt.Println("ServerEnCount : ", serverEnCount)
+		fmt.Println("Server Encoding completed!!!!!")
+		Conn.Close()
 	}
-	fmt.Println("Encoding completed!!!!!")
-	file.Close()
+
 }
 
 func openFile() {
@@ -192,27 +194,28 @@ func openFile() {
 	} else {
 		loadDataDecoder()
 	}
+
 }
 
 func loadDataDecoder() {
 	decoder := gob.NewDecoder(file)
 	var buff Details
+	count := 0
 	for {
+		count++
 		err := decoder.Decode(&buff)
 		if err == io.EOF {
-			fmt.Println("Reached the End!!!")
+			//fmt.Println("Reached the End!!!")
 			break
 		}
-		/*if err != nil {
-			fmt.Println("Error in Decoding the file")
-			break
-		}*/
 
 		Data = append(Data, buff)
-		fmt.Println(Data)
+		//fmt.Println(Data)
 	}
-
+	fmt.Println("Loader count : ", count)
+	DisplayCount := 0
 	for i, _ := range Data {
+		DisplayCount++
 		fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 		fmt.Println("Name : ", Data[i].Name)
 		fmt.Println("Employee ID : ", Data[i].Id)
@@ -220,6 +223,8 @@ func loadDataDecoder() {
 		fmt.Println("Email : ", Data[i].Email)
 		fmt.Println("Phone : ", Data[i].Phone)
 	}
+	Data = nil
+	fmt.Println("Data Display count : ", DisplayCount)
 
 }
 
